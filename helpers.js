@@ -18,16 +18,25 @@ function extractListingsFromHTML (html) {
 
         
         let title = $(el).find('.title').text().trim();
-        let time = $(el).find('.time').text().trim();
+        let posted_at = $(el).find('.time').text().trim();
         let thumbnail = $(el).find('img').attr("src");
         
         
-        console.log(title);
-        console.log(time);
-        console.log(thumbnail);
+        // console.log(title);
+        // console.log(posted_at);
+        // console.log(thumbnail);
+
+        const obj = {
+            title: title,
+            posted_at: posted_at,
+            thumbnail: thumbnail
+        };
+        result.push(obj);
 
     });
 
+
+    return result;
 
 /*
 
