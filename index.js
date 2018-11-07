@@ -1,12 +1,20 @@
-const request = require('axios');
+'use strict';
+
+const axios = require('axios');
 const cheerio = require('cheerio');
 const { extractListingsFromHTML } = require('./helpers');
 const _ = require('lodash');
 
-let AWS = require('aws-sdk');
-var sqs = new AWS.SQS({
-    region: 'ap-southeast-1'
+const bucketName = 'article-bucket-55895cd0-e240-11e8-8c69-036b726f6b89';
+const region = 'ap-southeast-1';
+
+const AWS = require('aws-sdk');
+const sqs = new AWS.SQS({
+    region: region
 });
+const s3 = new AWS.S3();
+
+
 
 // console.log(AWS.config);
 // AWS.config.update({ region: 'ap-southeast-1' });
@@ -23,7 +31,8 @@ exports.handler = async (event, context, callback) => {
     // return calculationResult;
 
 
-    setupSQS();
+    // const s3Result = await setupS3Bucket();
+    // const sqsResult = await setupSQS();
 
     let data;
 /*
@@ -41,6 +50,7 @@ exports.handler = async (event, context, callback) => {
     }
     */
 
+
     // console.log('hello world end');
 
     return data;
@@ -48,7 +58,7 @@ exports.handler = async (event, context, callback) => {
 
 async function scrapeFromUrl(url) {
     return new Promise((resolve, reject) => {
-        request(url)
+        axios(url)
             .then(({ data }) => {
                 // console.log('data');
                 // console.log(data);
@@ -92,6 +102,17 @@ async function scrapeFromUrl(url) {
 //     return response;
 // };
 
+async function setupS3Bucket() {
+    console.log('setupS3Bucket');
+
+    // const newBucket = await createS3Bucket('eed7f02f-8418-4b71-862e-f6044cf41ad3', region);
+
+    // const buckets = await listS3Buckets();
+
+    const bucketObjects = await listS3BucketObjects(bucketName);
+
+
+}
 
 async function setupSQS() {
     console.log('setupSQS');
@@ -147,7 +168,7 @@ async function setupSQS() {
 
 
         const allMessageObjects = await receiveMessageFromSQSQueue(sqsQueueUrl);
-        if (_.isArray(allMessageObjects )) {
+        if (_.isArray(allMessageObjects)) {
             console.log(`allMessages: ${allMessageObjects.length}`);
 
             _.forEach(allMessageObjects, (obj) => {
@@ -205,7 +226,7 @@ async function updateSQSQueue(queueUrl) {
             },
             QueueUrl: queueUrl
         };
-        sqs.setQueueAttributes(params, function(err, data) {
+        sqs.setQueueAttributes(params, function (err, data) {
             if (err) {
                 console.log("Error", err);
                 reject(err);
@@ -236,7 +257,7 @@ async function isSQSQueueExist(name) {
             QueueName: name,
             // QueueOwnerAWSAccountId: 'STRING_VALUE'
         };
-    
+
         sqs.getQueueUrl(params, function (err, data) {
             if (err) {
                 console.log('getQueueUrl err');
@@ -259,9 +280,9 @@ async function addMessageToSQSQueue(queueUrl, message) {
             QueueUrl: queueUrl,
             DelaySeconds: 0
         };
-    
-        sqs.sendMessage(params, function(err, data) {
-            if(err) {
+
+        sqs.sendMessage(params, function (err, data) {
+            if (err) {
                 reject(err);
             }
             else {
@@ -287,7 +308,7 @@ async function receiveMessageFromSQSQueue(queueUrl) {
 
         let messages = [];
 
-        sqs.receiveMessage(params, function(err, data) {
+        sqs.receiveMessage(params, function (err, data) {
             if (err) {
                 console.log("Error", err);
                 reject(err);
@@ -321,7 +342,7 @@ async function deleteMessage(queueUrl, receiptHandle) {
             QueueUrl: queueUrl,
             ReceiptHandle: receiptHandle
         };
-        sqs.deleteMessage(params, function(err, data) {
+        sqs.deleteMessage(params, function (err, data) {
             if (err) {
                 console.log('deleteMessage err');
                 console.log(err);
@@ -359,3 +380,122 @@ async function deleteMessage(queueUrl, receiptHandle) {
 //         });
 //     });
 // }
+
+
+async function listS3Buckets() {
+    return new Promise((resolve, reject) => {
+        const params = {};
+        s3.listBuckets(params, function (err, data) {
+            if (err) {
+                console.log('listBuckets err');
+                console.log(err, err.stack);
+                reject(err);
+            } else {
+                /*
+                data = {
+                    Buckets: [
+                    {
+                    CreationDate: <Date Representation>,
+                    Name: "examplebucket"
+                    },
+                    {
+                    CreationDate: <Date Representation>,
+                    Name: "examplebucket2"
+                    },
+                    {
+                    CreationDate: <Date Representation>,
+                    Name: "examplebucket3"
+                    }
+                    ], 
+                    Owner: {
+                    DisplayName: "own-display-name",
+                    ID: "examplee7a2f25102679df27bb0ae12b3f85be6f290b936c4393484be31"
+                    }
+                }
+                */
+                console.log('listBuckets success');
+                console.log(data);
+                resolve(data.Buckets);
+            }
+        });
+    });
+}
+
+async function createS3Bucket(bucketName, bucketRegion) {
+    return new Promise((resolve, reject) => {
+        const params = {
+            Bucket: bucketName,
+            CreateBucketConfiguration: {
+                LocationConstraint: bucketRegion
+            }
+        };
+        s3.createBucket(params, function(err, data) {
+            if (err) {
+                console.log('createBucket err');
+                console.log(err, err.stack);
+                reject(err);
+            } else {
+                console.log('createBucket success');
+                console.log(data);
+                resolve(data);
+            }
+            /*
+            data = {
+             Location: "http://examplebucket.s3.amazonaws.com/"
+            }
+            */
+        });
+    });
+}
+
+async function listS3BucketObjects(bucketName) {
+    return new Promise((resolve, reject) => {
+        const params = {
+            Bucket: bucketName,
+            MaxKeys: 10
+        };
+        s3.listObjects(params, function(err, data) {
+            if (err) {
+                console.log('listObjects err');
+                console.log(err, err.stack);
+                reject(err);
+            } else {
+                console.log('listObjects success');
+                console.log(data);
+                resolve(data);
+
+                /*
+                data = {
+                 Contents: [
+                    {
+                   ETag: "\"70ee1738b6b21e2c8a43f3a5ab0eee71\"",
+                   Key: "example1.jpg",
+                   LastModified: <Date Representation>,
+                   Owner: {
+                    DisplayName: "myname",
+                    ID: "12345example25102679df27bb0ae12b3f85be6f290b936c4393484be31bebcc"
+                   },
+                   Size: 11,
+                   StorageClass: "STANDARD"
+                  },
+                    {
+                   ETag: "\"9c8af9a76df052144598c115ef33e511\"",
+                   Key: "example2.jpg",
+                   LastModified: <Date Representation>,
+                   Owner: {
+                    DisplayName: "myname",
+                    ID: "12345example25102679df27bb0ae12b3f85be6f290b936c4393484be31bebcc"
+                   },
+                   Size: 713193,
+                   StorageClass: "STANDARD"
+                  }
+                 ],
+                 NextMarker: "eyJNYXJrZXIiOiBudWxsLCAiYm90b190cnVuY2F0ZV9hbW91bnQiOiAyfQ=="
+                }
+                */
+
+            }
+
+        });
+    });
+}
