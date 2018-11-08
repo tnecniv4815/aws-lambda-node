@@ -15,6 +15,8 @@ const sqs = new AWS.SQS({
 const s3 = new AWS.S3();
 
 
+const articleQueueName = 'ArticleQueue';
+
 
 // console.log(AWS.config);
 // AWS.config.update({ region: 'ap-southeast-1' });
@@ -35,20 +37,29 @@ exports.handler = async (event, context, callback) => {
     // const sqsResult = await setupSQS();
 
     let data;
-/*
+
     try {
+        console.log('Start scraping data');
         data = await scrapeFromUrl(scrapeUrl);
-        console.log('scrapeData');
-        console.log(data);
+        console.log('Scrape completed');
 
         if (data != null && data.length > 0) {
+            // const sqsQueueUrl = await setupSQS();
+            // if (sqsQueueUrl) {
+            //     const asdf = await pushArticleToSQSQueue(sqsQueueUrl, data);
+            // }
+
+
+
+
 
         }
     } catch (error) {
         console.log(error);
         return error;
     }
-    */
+
+
 
 
     // console.log('hello world end');
@@ -65,7 +76,7 @@ async function scrapeFromUrl(url) {
                 const jobs = extractListingsFromHTML(data);
                 // console.log('\n\n\n\n\n\n\njobs');
 
-                console.log('extractListingsFromHTML');
+                // console.log('extractListingsFromHTML');
                 // console.log(jobs);
 
                 let list = jobs;
@@ -88,20 +99,6 @@ async function scrapeFromUrl(url) {
 }
 
 
-
-// let handler = require('./handler');
-//
-// handler.hello = async (event) => {
-//     console.log('hello world');
-//
-//     // TODO implement
-//     const response = {
-//         statusCode: 200,
-//         body: JSON.stringify('Hello from Lambda 2!')
-//     };
-//     return response;
-// };
-
 async function setupS3Bucket() {
     console.log('setupS3Bucket');
 
@@ -110,7 +107,6 @@ async function setupS3Bucket() {
     // const buckets = await listS3Buckets();
 
     const bucketObjects = await listS3BucketObjects(bucketName);
-
 
 }
 
@@ -123,9 +119,9 @@ async function setupSQS() {
     //     // apiVersion: '2012-11-05'
     //  });
 
-    const qName = 'MyFirstQueue';
+    // const qName = 'MyFirstQueue';
 
-    const articleQueueName = 'ArticleQueue';
+
 
     // const sqsArticleQueueUrl = await isSQSQueueExist(articleQueueName);
     // if (sqsArticleQueueUrl == null) {
@@ -135,8 +131,15 @@ async function setupSQS() {
     // createSQSQueue(queueName);
     // listSQSQueues();
 
-    const sqsQueueUrl = await isSQSQueueExist(qName);
+    let sqsQueueUrl = await createSQSQueue(articleQueueName);
+
+    // let sqsQueueUrl = await isSQSQueueExist(articleQueueName);
+    // if (sqsQueueUrl == null) {
+    //     console.log(`SQS Queue ${sqsQueueUrl} does not exist`);
+    // }
+
     if (sqsQueueUrl != null) {
+        return sqsQueueUrl;
         // addMessageToSQSQueue(sqsQueueUrl, 'hello world');
         // addMessageToSQSQueue(sqsQueueUrl, 'good job');
         // addMessageToSQSQueue(sqsQueueUrl, 'nice view');
@@ -167,54 +170,59 @@ async function setupSQS() {
 
 
 
-        const allMessageObjects = await receiveMessageFromSQSQueue(sqsQueueUrl);
-        if (_.isArray(allMessageObjects)) {
-            console.log(`allMessages: ${allMessageObjects.length}`);
-
-            _.forEach(allMessageObjects, (obj) => {
-                const receiptHandle = obj.receiptHandle;
-                const body = obj.body;
-
-                console.log(`body: ${body}`);
-
-                // deleteMessage(sqsQueueUrl, receiptHandle)
-                //     .then(data => {
-                //         console.log('deleteMessage return');
-                //         console.log(data);
-                //     })
-                //     .catch(err => {
-                //         console.log('deleteMessage return err');
-                //         console.log(err);
-                //     })
-                // ;
-            });
-        }
-
-
+        // const allMessageObjects = await receiveMessageFromSQSQueue(sqsQueueUrl);
+        // if (_.isArray(allMessageObjects)) {
+        //     console.log(`allMessages: ${allMessageObjects.length}`);
+        //
+        //     _.forEach(allMessageObjects, (obj) => {
+        //         const receiptHandle = obj.receiptHandle;
+        //         const body = obj.body;
+        //
+        //         console.log(`body: ${body}`);
+        //
+        //         // deleteMessage(sqsQueueUrl, receiptHandle)
+        //         //     .then(data => {
+        //         //         console.log('deleteMessage return');
+        //         //         console.log(data);
+        //         //     })
+        //         //     .catch(err => {
+        //         //         console.log('deleteMessage return err');
+        //         //         console.log(err);
+        //         //     })
+        //         // ;
+        //     });
+        // }
 
     }
+
+
+
     console.log(`sqsQueueUrl: ${sqsQueueUrl}`);
 
 
 
 }
 
-function createSQSQueue(name) {
-    const params = {
-        QueueName: name,
-        Attributes: {
-            'ReceiveMessageWaitTimeSeconds': '20',
-        }
-    };
-    console.log('createQueue');
-    sqs.createQueue(params, (err, data) => {
-        if (err) {
-            console.log('createQueueErr');
-            console.log(err, err.stack);
-        } else {
-            console.log('createQueueSuccess');
-            console.log(data);
-        }
+async function createSQSQueue(name) {
+    return new Promise((resolve, reject) => {
+        const params = {
+            QueueName: name,
+            Attributes: {
+                'ReceiveMessageWaitTimeSeconds': '20',
+            }
+        };
+        console.log('createQueue');
+        sqs.createQueue(params, (err, data) => {
+            if (err) {
+                console.log('createQueueErr');
+                console.log(err, err.stack);
+                reject(err);
+            } else {
+                console.log('createQueueSuccess');
+                console.log(data);
+                resolve(data.QueueUrl);
+            }
+        });
     });
 }
 
@@ -273,9 +281,9 @@ async function isSQSQueueExist(name) {
     });
 }
 
-async function addMessageToSQSQueue(queueUrl, message) {
+function addMessageToSQSQueue(queueUrl, message) {
     return new Promise((resolve, reject) => {
-        var params = {
+        const params = {
             MessageBody: message,
             QueueUrl: queueUrl,
             DelaySeconds: 0
@@ -283,9 +291,11 @@ async function addMessageToSQSQueue(queueUrl, message) {
 
         sqs.sendMessage(params, function (err, data) {
             if (err) {
+                console.log('sendMessage err: ', err);
                 reject(err);
             }
             else {
+                console.log('sendMessage success: ', data);
                 resolve(data);
             }
         });
@@ -498,4 +508,20 @@ async function listS3BucketObjects(bucketName) {
 
         });
     });
+}
+
+function pushArticleToSQSQueue(sqsQueueUrl, articles) {
+    // return new Promise((resolve, reject) => {
+    //
+    // });
+
+    _.forEach(articles, function(article) {
+        const articleStr = JSON.stringify(article);
+        console.log(`data: ${ articleStr }`);
+
+        const addMessageResult = addMessageToSQSQueue(sqsQueueUrl, articleStr);
+        console.log(`title: ${article.title} , result: ${ JSON.stringify(addMessageResult) }`);
+
+    });
+
 }
