@@ -8,14 +8,14 @@ const _ = require('lodash');
 const bucketName = 'article-bucket-55895cd0-e240-11e8-8c69-036b726f6b89';
 const region = 'ap-southeast-1';
 
+const articleQueueName = 'ArticleQueue';
+
 const AWS = require('aws-sdk');
 const sqs = new AWS.SQS({
     region: region
 });
 const s3 = new AWS.S3();
 
-
-const articleQueueName = 'ArticleQueue';
 
 
 // console.log(AWS.config);
@@ -49,6 +49,11 @@ exports.handler = async (event, context, callback) => {
             //     const asdf = await pushArticleToSQSQueue(sqsQueueUrl, data);
             // }
 
+            const targetSQSQueueUrl = await findSQSQueue(articleQueueName);
+            console.log('targetQueueUrl: ', targetSQSQueueUrl);
+            if (targetSQSQueueUrl !== '') {
+                const asdf = await pushArticleToSQSQueue(targetSQSQueueUrl, data);
+            }
 
 
 
@@ -246,16 +251,35 @@ async function updateSQSQueue(queueUrl) {
     });
 }
 
-function listSQSQueues() {
-    console.log('listQueues');
-    sqs.listQueues(function (err, data) {
-        if (err) {
-            console.log('listQueuesErr');
-            console.log(err);
-        } else {
-            console.log('listQueuesSuccess');
-            console.log(data.QueueUrls);
+async function findSQSQueue(targetQueueName) {
+    let targetUrl = '';
+    const response = await listSQSQueues();
+    _.forEach(response.QueueUrls, (queueUrl) => {
+        const queueName = queueUrl.split('/').pop();
+        // console.log('queueName: ', queueName);
+
+        if (queueName === targetQueueName) {
+            targetUrl = queueUrl;
         }
+    });
+
+    return targetUrl;
+}
+
+function listSQSQueues() {
+    return new Promise((resolve, reject) => {
+        console.log('listQueues');
+        sqs.listQueues(function (err, data) {
+            if (err) {
+                console.log('listQueuesErr');
+                console.log(err);
+                reject(err);
+            } else {
+                console.log('listQueuesSuccess');
+                console.log(data);
+                resolve(data);
+            }
+        });
     });
 }
 
