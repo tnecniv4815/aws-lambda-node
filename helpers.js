@@ -22,16 +22,22 @@ function extractListingsFromHTML (html) {
         let title = $(element).find('.title').text().trim();
         let posted_at = $(element).find('.time').text().trim();
         let thumbnail = $(element).find('img').attr("src");
-        
-        
+        let link = $(element).find('a').attr('href');
+
+        const linkId = link.split('/').pop();
+
         // console.log(title);
         // console.log(posted_at);
         // console.log(thumbnail);
+        // console.log(link);
+        // console.log(linkId);
 
         const obj = {
             title: title,
             posted_at: posted_at,
-            thumbnail: thumbnail
+            thumbnail: thumbnail,
+            linkId: linkId
+            // link: link
         };
         result.push(obj);
 
@@ -39,21 +45,26 @@ function extractListingsFromHTML (html) {
 
     });
 
-/*
+
     // list
     dataListRows.each((i, element) => {
         let title = $(element).find('.title').text().trim();
         let posted_at = $(element).find('.time').text().trim();
         let thumbnail = $(element).find('img').attr("src");
+        let link = $(element).find('a').attr('href');
+
+        const linkId = link.split('/').pop();
 
         const obj = {
             title: title,
             posted_at: posted_at,
-            thumbnail: thumbnail
+            thumbnail: thumbnail,
+            linkId: linkId
         };
         result.push(obj);
     });
-    */
+
+
 
 
     return result;

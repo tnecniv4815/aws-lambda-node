@@ -8,7 +8,11 @@ const _ = require('lodash');
 const bucketName = 'article-bucket-55895cd0-e240-11e8-8c69-036b726f6b89';
 const region = 'ap-southeast-1';
 
-const articleQueueName = 'ArticleQueue';
+const articleLinkQueueName = 'ArticleLinkQueue';
+const articleQueueName = 'ArticleQueue';    // ArticleQueue MyFirstQueue
+
+// const articleQueueUrl = 'https://sqs.ap-southeast-1.amazonaws.com/340288593666/ArticleQueue';
+// const articleLinkQueueUrl = 'https://sqs.ap-southeast-1.amazonaws.com/340288593666/ArticleLinkQueue';
 
 const AWS = require('aws-sdk');
 const sqs = new AWS.SQS({
@@ -23,6 +27,7 @@ const s3 = new AWS.S3();
 
 // let lambda = new AWS.Lambda();
 
+// http://std.stheadline.com/instant/articles/detail/
 const scrapeUrl = 'http://std.stheadline.com/instant/articles/listview/%E9%A6%99%E6%B8%AF/';
 
 exports.handler = async (event, context, callback) => {
@@ -35,6 +40,7 @@ exports.handler = async (event, context, callback) => {
 
     // const s3Result = await setupS3Bucket();
     // const sqsResult = await setupSQS();
+
 
     let data;
 
@@ -49,10 +55,17 @@ exports.handler = async (event, context, callback) => {
             //     const asdf = await pushArticleToSQSQueue(sqsQueueUrl, data);
             // }
 
+            // const articleResult = await pushArticleToSQSQueue(articleQueueUrl, data);
+
             const targetSQSQueueUrl = await findSQSQueue(articleQueueName);
             console.log('targetQueueUrl: ', targetSQSQueueUrl);
             if (targetSQSQueueUrl !== '') {
-                const asdf = await pushArticleToSQSQueue(targetSQSQueueUrl, data);
+                const result = await pushArticleToSQSQueue(targetSQSQueueUrl, data);
+            }
+
+            const targetSQSLinkQueueUrl = await findSQSQueue(articleLinkQueueName);
+            if (targetSQSLinkQueueUrl !== '') {
+                const result = await pushArticleToSQSQueue(targetSQSLinkQueueUrl, data);
             }
 
 
@@ -63,6 +76,7 @@ exports.handler = async (event, context, callback) => {
         console.log(error);
         return error;
     }
+
 
 
 
@@ -313,6 +327,7 @@ function addMessageToSQSQueue(queueUrl, message) {
             DelaySeconds: 0
         };
 
+        console.log('addMessageToSQSQueue: ', queueUrl, ' message: ', message);
         sqs.sendMessage(params, function (err, data) {
             if (err) {
                 console.log('sendMessage err: ', err);

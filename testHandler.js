@@ -7,9 +7,14 @@ console.log('init.....');
 // console.log(data);
 
 const app = require('./index');
-const data = app.handler({})
+// const startTimer = Date.now();
+const data = app.handler({});
+// const endTimer = Date.now();
+
+
 console.log(data);
 
+// console.log('time spend: ' + endTimer - startTimer);
 
 
 
