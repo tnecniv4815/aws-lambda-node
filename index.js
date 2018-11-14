@@ -43,7 +43,7 @@ exports.handler = async (event, context, callback) => {
 
 
     let data;
-
+/*
     try {
         console.log('Start scraping data');
         data = await scrapeFromUrl(scrapeUrl);
@@ -57,15 +57,26 @@ exports.handler = async (event, context, callback) => {
 
             // const articleResult = await pushArticleToSQSQueue(articleQueueUrl, data);
 
-            const targetSQSQueueUrl = await findSQSQueue(articleQueueName);
-            console.log('targetQueueUrl: ', targetSQSQueueUrl);
-            if (targetSQSQueueUrl !== '') {
-                const result = await pushArticleToSQSQueue(targetSQSQueueUrl, data);
-            }
+            // const targetSQSQueueUrl = await findSQSQueue(articleQueueName);
+            // console.log('targetQueueUrl: ', targetSQSQueueUrl);
+            // if (targetSQSQueueUrl !== '') {
+            //     const result = await pushArticleToSQSQueue(targetSQSQueueUrl, data);
+            // }
+            //
+            // const targetSQSLinkQueueUrl = await findSQSQueue(articleLinkQueueName);
+            // if (targetSQSLinkQueueUrl !== '') {
+            //     const result = await pushArticleToSQSQueue(targetSQSLinkQueueUrl, data);
+            // }
 
-            const targetSQSLinkQueueUrl = await findSQSQueue(articleLinkQueueName);
-            if (targetSQSLinkQueueUrl !== '') {
-                const result = await pushArticleToSQSQueue(targetSQSLinkQueueUrl, data);
+            const sqsResult = await listSQSQueues();
+            if (!_.isNull(sqsResult)) {
+                const queueUrls = sqsResult.QueueUrls;
+                if (queueUrls.length > 0) {
+                    const targetSQSQueueUrl = await findSQSQueue(queueUrls, articleQueueName);
+                    if (targetSQSQueueUrl !== '') {
+                        const result = await pushArticleToSQSQueue(targetSQSQueueUrl, data);
+                    }
+                }
             }
 
 
@@ -78,6 +89,7 @@ exports.handler = async (event, context, callback) => {
     }
 
 
+*/
 
 
 
@@ -265,10 +277,9 @@ async function updateSQSQueue(queueUrl) {
     });
 }
 
-async function findSQSQueue(targetQueueName) {
+async function findSQSQueue(queueUrls, targetQueueName) {
     let targetUrl = '';
-    const response = await listSQSQueues();
-    _.forEach(response.QueueUrls, (queueUrl) => {
+    _.forEach(queueUrls, (queueUrl) => {
         const queueName = queueUrl.split('/').pop();
         // console.log('queueName: ', queueName);
 

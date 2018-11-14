@@ -45,7 +45,7 @@ function extractListingsFromHTML (html) {
 
     });
 
-
+/*
     // list
     dataListRows.each((i, element) => {
         let title = $(element).find('.title').text().trim();
@@ -64,6 +64,7 @@ function extractListingsFromHTML (html) {
         result.push(obj);
     });
 
+    */
 
 
 
